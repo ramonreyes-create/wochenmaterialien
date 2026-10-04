@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>11. Klasse – Aktuelle Woche</title>
+  <style>
+    :root {
+      --navy:#172554; --blue:#2563eb; --blue-dark:#1d4ed8;
+      --orange:#f97316; --green:#16a34a; --ink:#1e293b;
+      --muted:#64748b; --page:#f1f5f9; --line:#dbe3ee;
+      --shadow:0 8px 22px rgba(15,23,42,.10);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { min-height:100vh; font-family:"Segoe UI",Arial,sans-serif; background:var(--page); color:var(--ink); }
+    button,input,select,textarea { font:inherit; }
+    button { cursor:pointer; }
+    header { background:linear-gradient(135deg,var(--navy),var(--blue)); color:#fff; padding:48px 20px 40px; text-align:center; }
+    header h1 { font-size:clamp(2rem,6vw,3rem); margin-bottom:8px; }
+    header p { font-size:1.08rem; opacity:.92; }
+    main { max-width:1250px; margin:30px auto; padding:0 20px 50px; }
+    .weekbar { display:flex; justify-content:space-between; align-items:center; gap:18px; background:#fff7ed; border-left:7px solid var(--orange); border-radius:16px; padding:20px 22px; margin-bottom:24px; box-shadow:var(--shadow); }
+    .weekbar h2 { color:#9a3412; margin-bottom:4px; }
+    .weekbar p { color:#7c2d12; }
+    .edit-toggle { border:0; border-radius:999px; padding:11px 16px; background:#fff; color:#9a3412; font-weight:800; box-shadow:0 3px 10px #7c2d1222; white-space:nowrap; }
+    .notice { background:#fff; border-radius:16px; padding:18px 22px; margin-bottom:24px; box-shadow:0 6px 18px rgba(15,23,42,.08); line-height:1.55; }
+    .notice strong { color:var(--blue-dark); }
+    .days { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:18px; align-items:start; }
+    .day { background:#fff; border-radius:18px; overflow:hidden; box-shadow:var(--shadow); border-top:6px solid var(--blue); min-height:330px; }
+    .day.today { border-top-color:var(--orange); background:#fffaf5; box-shadow:0 12px 30px rgba(249,115,22,.18); }
+    .day-head { padding:18px 18px 14px; border-bottom:1px solid var(--line); }
+    .day-name { font-size:1.35rem; font-weight:800; color:var(--blue-dark); }
+    .today .day-name { color:#c2410c; }
+    .day-date { margin-top:4px; color:var(--muted); font-size:.9rem; }
+    .today-label { display:inline-block; margin-top:9px; padding:5px 9px; border-radius:999px; background:#fed7aa; color:#9a3412; font-size:.74rem; font-weight:800; }
+    .materials { list-style:none; padding:14px; display:grid; gap:12px; }
+    .material { background:#f8fafc; border:1px solid var(--line); border-radius:13px; padding:13px; }
+    .today .material { background:#fff; }
+    .material-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+    .material h3 { font-size:1rem; line-height:1.3; overflow-wrap:anywhere; }
+    .kind { display:inline-block; margin:8px 0 6px; padding:4px 8px; background:#dbeafe; color:#1e40af; border-radius:999px; font-size:.72rem; font-weight:800; }
+    .material p { color:#475569; font-size:.88rem; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .material a { display:inline-block; margin-top:9px; color:var(--blue-dark); font-weight:750; font-size:.88rem; text-decoration:none; }
+    .material a:hover { text-decoration:underline; }
+    .empty { padding:24px 18px; color:var(--muted); text-align:center; line-height:1.5; }
+    .delete { display:none; border:0; background:#fee2e2; color:#b91c1c; border-radius:8px; padding:5px 8px; font-weight:800; }
+    body.editing .delete { display:inline-block; }
+    .add { display:none; width:calc(100% - 28px); margin:0 14px 14px; border:2px dashed #93c5fd; color:#1d4ed8; background:#eff6ff; border-radius:12px; padding:10px; font-weight:800; }
+    body.editing .add { display:block; }
+    .admin { display:none; margin-top:24px; background:#fff; border-radius:16px; padding:20px 22px; box-shadow:var(--shadow); }
+    body.editing .admin { display:block; }
+    .admin h2 { color:var(--blue-dark); margin-bottom:8px; }
+    .admin p { color:#475569; line-height:1.55; margin-bottom:14px; }
+    .sync-status { font-weight:800; color:#166534; }
+    .sync-status.error,.form-message { color:#b91c1c; }
+    .form-message { min-height:20px; font-size:.9rem; font-weight:700; }
+    .admin-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .secondary { border:1px solid #cbd5e1; background:#f8fafc; color:#334155; border-radius:10px; padding:9px 13px; font-weight:750; }
+    .danger { color:#b91c1c; border-color:#fecaca; background:#fff1f2; }
+    dialog { width:min(560px,calc(100% - 30px)); border:0; border-radius:18px; padding:0; box-shadow:0 24px 70px rgba(15,23,42,.35); }
+    dialog::backdrop { background:rgba(15,23,42,.55); }
+    .dialog-head { padding:20px 22px; background:linear-gradient(135deg,var(--navy),var(--blue)); color:#fff; }
+    form { padding:22px; display:grid; gap:15px; }
+    label { display:grid; gap:6px; font-weight:750; color:#334155; }
+    input,select,textarea { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; color:var(--ink); background:#fff; }
+    textarea { resize:vertical; min-height:90px; }
+    input:focus,select:focus,textarea:focus { outline:3px solid #bfdbfe; border-color:var(--blue); }
+    .form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:3px; }
+    .cancel,.save { border:0; border-radius:10px; padding:10px 15px; font-weight:800; }
+    .cancel { background:#e2e8f0; color:#334155; }
+    .save { background:var(--blue); color:#fff; }
+    footer { text-align:center; padding:30px 20px; color:var(--muted); font-size:.9rem; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width:1050px) { .days { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:650px) {
+      .weekbar { align-items:flex-start; flex-direction:column; }
+      .days { grid-template-columns:1fr; }
+      .day { min-height:0; }
+    }
+    @media print {
+      header { padding:22px; }
+      main { margin:15px auto; padding-bottom:10px; }
+      .edit-toggle,.add,.admin,.delete { display:none !important; }
+      .days { grid-template-columns:repeat(5,1fr); gap:8px; }
+      .day { box-shadow:none; border:1px solid var(--line); border-top:5px solid var(--blue); }
+      .day-head,.materials { padding:10px; }
+      footer { padding:12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>11. Klasse</h1>
+    <p>Materialien und Übungen der aktuellen Schulwoche</p>
+  </header>
+
+  <main>
+    <section class="weekbar" aria-labelledby="weekTitle">
+      <div>
+        <h2 id="weekTitle">Aktuelle Woche</h2>
+        <p id="weekRange"></p>
+      </div>
+      <button class="edit-toggle" id="editToggle" type="button" aria-pressed="false">✏️ Bearbeiten</button>
+    </section>
+
+    <section class="notice">
+      <strong>Diese Seite zeigt automatisch Montag bis Freitag der aktuellen Kalenderwoche.</strong>
+      Materialien können als Link zu einer Datei, einer Übung, einem Video oder einer Webseite eingetragen werden.
+    </section>
+
+    <section class="days" id="days" aria-label="Unterrichtswoche"></section>
+
+    <section class="admin" aria-labelledby="adminTitle">
+      <h2 id="adminTitle">Verwaltung und Sicherung</h2>
+      <p>Die Materialien werden direkt im GitHub-Repository gespeichert. Der persönliche GitHub-Schlüssel bleibt nur für diese Browsersitzung im Speicher.</p>
+      <p class="sync-status" id="syncStatus">Mit GitHub verbunden</p>
+      <div class="admin-actions">
+        <button class="secondary" id="reloadButton" type="button">Neu laden</button>
+        <button class="secondary danger" id="logoutButton" type="button">Abmelden</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="materialDialog">
+    <div class="dialog-head"><h2>Material hinzufügen</h2><p id="dialogDate"></p></div>
+    <form id="materialForm">
+      <input id="materialDate" type="hidden">
+      <label>Titel
+        <input id="materialTitle" required maxlength="100" placeholder="z. B. Arbeitsblatt Futur I">
+      </label>
+      <label>Art des Materials
+        <select id="materialKind">
+          <option>Arbeitsblatt</option><option>Interaktive Übung</option><option>Präsentation</option>
+          <option>Video</option><option>Hausaufgabe</option><option>Information</option><option>Link</option>
+        </select>
+      </label>
+      <label>Datei hochladen
+        <input id="materialFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,audio/*,video/*,image/*">
+      </label>
+      <label>Oder Internet-Link
+        <input id="materialLink" type="url" placeholder="https://…">
+      </label>
+      <label>Hinweis für die Schülerinnen
+        <textarea id="materialNote" maxlength="500" placeholder="Kurze Arbeitsanweisung oder Abgabetermin"></textarea>
+      </label>
+      <div class="form-message" id="materialMessage"></div>
+      <div class="form-actions">
+        <button class="cancel" id="cancelButton" type="button">Abbrechen</button>
+        <button class="save" type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="loginDialog">
+    <div class="dialog-head"><h2>Lehrkraftbereich</h2><p>GitHub-Zugang nur für diese Sitzung eingeben.</p></div>
+    <form id="loginForm">
+      <label>GitHub Fine-grained Token
+        <input id="githubToken" type="password" required autocomplete="off" placeholder="github_pat_…">
+      </label>
+      <p>Der Token benötigt ausschließlich Schreibzugriff auf „Contents“ dieses Repositories.</p>
+      <div class="form-message" id="loginMessage"></div>
+      <div class="form-actions">
+        <button class="cancel" id="loginCancel" type="button">Abbrechen</button>
+        <button class="save" type="submit">Anmelden</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer>Colegio Santa Úrsula · Deutschunterricht · <span id="year"></span></footer>
+
+  <script type="text/plain" id="legacyScript">
+    "use strict";
+
+    const STORAGE_KEY = "unterricht-materialien-v1";
+    const dayNames = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag"];
+    const daysContainer = document.getElementById("days");
+    const dialog = document.getElementById("materialDialog");
+    const form = document.getElementById("materialForm");
+    const importFile = document.getElementById("importFile");
+    let materials = loadMaterials();
+
+    function atNoon(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+    }
+
+    function addDays(date, amount) {
+      const result = atNoon(date);
+      result.setDate(result.getDate() + amount);
+      return result;
+    }
+
+    function mondayOfCurrentWeek() {
+      const today = atNoon(new Date());
+      const weekday = today.getDay() || 7;
+      return addDays(today, 1 - weekday);
+    }
+
+    function dateKey(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDate(date, options = {}) {
+      return new Intl.DateTimeFormat("de-DE", options).format(date);
+    }
+
+    function isoWeek(date) {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const day = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    function loadMaterials() {
+      try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+      } catch { return {}; }
+    }
+
+    function saveMaterials() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
+    }
+
+    function safeLink(value) {
+      const link = String(value || "").trim();
+      if (!link) return "";
+      if (/^(https?:|mailto:)/i.test(link)) return link;
+      if (/^(javascript|data|vbscript):/i.test(link)) return "";
+      return link;
+    }
+
+    function renderMaterial(item, key, index) {
+      const li = document.createElement("li");
+      li.className = "material";
+
+      const top = document.createElement("div");
+      top.className = "material-top";
+      const title = document.createElement("h3");
+      title.textContent = item.title;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "delete";
+      remove.textContent = "Löschen";
+      remove.setAttribute("aria-label", `${item.title} löschen`);
+      remove.addEventListener("click", () => {
+        if (!confirm(`„${item.title}“ wirklich löschen?`)) return;
+        materials[key].splice(index, 1);
+        if (!materials[key].length) delete materials[key];
+        saveMaterials();
+        renderWeek();
+      });
+      top.append(title, remove);
+      li.append(top);
+
+      const kind = document.createElement("span");
+      kind.className = "kind";
+      kind.textContent = item.kind;
+      li.append(kind);
+
+      if (item.note) {
+        const note = document.createElement("p");
+        note.textContent = item.note;
+        li.append(note);
+      }
+
+      const href = safeLink(item.link);
+      if (href) {
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.textContent = "Material öffnen →";
+        if (/^https?:/i.test(href)) {
+          anchor.target = "_blank";
+          anchor.rel = "noopener noreferrer";
+        }
+        li.append(anchor);
+      }
+      return li;
+    }
+
+    function renderWeek() {
+      const monday = mondayOfCurrentWeek();
+      const friday = addDays(monday, 4);
+      const todayKey = dateKey(new Date());
+      document.getElementById("weekTitle").textContent = `Kalenderwoche ${isoWeek(monday)}`;
+      document.getElementById("weekRange").textContent =
+        `${formatDate(monday,{day:"2-digit",month:"long"})} – ${formatDate(friday,{day:"2-digit",month:"long",year:"numeric"})}`;
+      document.getElementById("year").textContent = monday.getFullYear();
+      daysContainer.replaceChildren();
+
+      dayNames.forEach((name, index) => {
+        const date = addDays(monday, index);
+        const key = dateKey(date);
+        const card = document.createElement("article");
+        card.className = `day${key === todayKey ? " today" : ""}`;
+
+        const head = document.createElement("div");
+        head.className = "day-head";
+        const dayName = document.createElement("div");
+        dayName.className = "day-name";
+        dayName.textContent = name;
+        const dayDate = document.createElement("div");
+        dayDate.className = "day-date";
+        dayDate.textContent = formatDate(date,{day:"2-digit",month:"2-digit",year:"numeric"});
+        head.append(dayName, dayDate);
+        if (key === todayKey) {
+          const marker = document.createElement("span");
+          marker.className = "today-label";
+          marker.textContent = "Heute";
+          head.append(marker);
+        }
+
+        const list = document.createElement("ul");
+        list.className = "materials";
+        const entries = materials[key] || [];
+        if (entries.length) entries.forEach((item,i) => list.append(renderMaterial(item,key,i)));
+        else {
+          const empty = document.createElement("li");
+          empty.className = "empty";
+          empty.textContent = "Noch keine Materialien eingetragen.";
+          list.append(empty);
+        }
+
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "add";
+        add.textContent = "+ Material hinzufügen";
+        add.addEventListener("click", () => openDialog(date));
+        card.append(head, list, add);
+        daysContainer.append(card);
+      });
+    }
+
+    function openDialog(date) {
+      const key = dateKey(date);
+      document.getElementById("materialDate").value = key;
+      document.getElementById("dialogDate").textContent =
+        `${dayNames[date.getDay()-1]}, ${formatDate(date,{day:"2-digit",month:"long",year:"numeric"})}`;
+      form.reset();
+      document.getElementById("materialDate").value = key;
+      dialog.showModal();
+      document.getElementById("materialTitle").focus();
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const key = document.getElementById("materialDate").value;
+      const entry = {
+        title: document.getElementById("materialTitle").value.trim(),
+        kind: document.getElementById("materialKind").value,
+        link: document.getElementById("materialLink").value.trim(),
+        note: document.getElementById("materialNote").value.trim()
+      };
+      if (!entry.title) return;
+      if (!materials[key]) materials[key] = [];
+      materials[key].push(entry);
+      saveMaterials();
+      dialog.close();
+      renderWeek();
+    });
+
+    document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
+    document.getElementById("editToggle").addEventListener("click", event => {
+      const active = document.body.classList.toggle("editing");
+      event.currentTarget.setAttribute("aria-pressed", String(active));
+      event.currentTarget.textContent = active ? "✓ Bearbeitung beenden" : "✏️ Bearbeiten";
+    });
+
+    document.getElementById("exportButton").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(materials,null,2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `unterricht-materialien-${dateKey(new Date())}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("importButton").addEventListener("click", () => importFile.click());
+    importFile.addEventListener("change", async () => {
+      const file = importFile.files[0];
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error();
+        materials = data;
+        saveMaterials();
+        renderWeek();
+        alert("Die Materialien wurden importiert.");
+      } catch { alert("Die Datei enthält keine gültigen Materialdaten."); }
+      importFile.value = "";
+    });
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      if (!confirm("Wirklich alle gespeicherten Materialien löschen?")) return;
+      materials = {};
+      saveMaterials();
+      renderWeek();
+    });
+
+    renderWeek();
+  </script>
+  <script>
+    "use strict";
+    const GH_OWNER="ramonreyes-create", GH_REPO="wochenmaterialien", GH_BRANCH="main";
+    const DATA_PATH="data/materials.json", API=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/`;
+    const dayNames=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"];
+    const daysContainer=document.getElementById("days"), dialog=document.getElementById("materialDialog");
+    const loginDialog=document.getElementById("loginDialog"), form=document.getElementById("materialForm");
+    let materials={}, dataSha="", token=sessionStorage.getItem("wochenmaterialien_github_token")||"";
+
+    function atNoon(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12)}
+    function addDays(d,n){const x=atNoon(d);x.setDate(x.getDate()+n);return x}
+    function mondayOfCurrentWeek(){const x=atNoon(new Date()),w=x.getDay()||7;return addDays(x,1-w)}
+    function dateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+    function formatDate(d,o={}){return new Intl.DateTimeFormat("de-DE",o).format(d)}
+    function isoWeek(d){const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),w=x.getUTCDay()||7;x.setUTCDate(x.getUTCDate()+4-w);const y=new Date(Date.UTC(x.getUTCFullYear(),0,1));return Math.ceil((((x-y)/86400000)+1)/7)}
+    function safeLink(v){const s=String(v||"").trim();return /^(https?:|mailto:)/i.test(s)?s:""}
+    function headers(){const h={Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};if(token)h.Authorization=`Bearer ${token}`;return h}
+    function encodeUtf8(text){const bytes=new TextEncoder().encode(text);let binary="";for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary)}
+    function decodeUtf8(base64){const binary=atob(base64.replace(/\n/g,"")),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return new TextDecoder().decode(bytes)}
+    function setSync(text,error=false){const el=document.getElementById("syncStatus");el.textContent=text;el.classList.toggle("error",error)}
+
+    async function loadMaterials(){
+      const response=await fetch(`${API}${DATA_PATH}?ref=${GH_BRANCH}&t=${Date.now()}`,{headers:headers(),cache:"no-store"});
+      if(!response.ok)throw new Error("Materialien konnten nicht geladen werden.");
+      const file=await response.json();dataSha=file.sha;
+      const parsed=JSON.parse(decodeUtf8(file.content));materials=parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed:{};
+      renderWeek();
+    }
+    async function githubPut(path,content,message,sha=""){
+      const body={message,content,branch:GH_BRANCH};if(sha)body.sha=sha;
+      const response=await fetch(API+path,{method:"PUT",headers:{...headers(),"Content-Type":"application/json"},body:JSON.stringify(body)});
+      const result=await response.json();if(!response.ok)throw new Error(result.message||"GitHub konnte die Änderung nicht speichern.");return result;
+    }
+    async function saveCatalog(message){
+      const result=await githubPut(DATA_PATH,encodeUtf8(JSON.stringify(materials,null,2)+"\n"),message,dataSha);
+      dataSha=result.content.sha;
+    }
+    async function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(",")[1]);r.onerror=reject;r.readAsDataURL(file)})}
+    function cleanName(name){return String(name).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9._-]+/g,"-").replace(/^-+|-+$/g,"").slice(0,100)||"material"}
+
+    function renderMaterial(item,key,index){
+      const li=document.createElement("li");li.className="material";
+      const top=document.createElement("div");top.className="material-top";
+      const title=document.createElement("h3");title.textContent=item.title;
+      const remove=document.createElement("button");remove.type="button";remove.className="delete";remove.textContent="Löschen";
+      remove.onclick=async()=>{if(!confirm(`„${item.title}“ wirklich löschen?`))return;remove.disabled=true;try{materials[key].splice(index,1);if(!materials[key].length)delete materials[key];await saveCatalog(`Material löschen: ${item.title}`);renderWeek();setSync("Gespeichert")}catch(e){await loadMaterials();alert(e.message)}finally{remove.disabled=false}};
+      top.append(title,remove);li.append(top);
+      const kind=document.createElement("span");kind.className="kind";kind.textContent=item.kind;li.append(kind);
+      if(item.note){const p=document.createElement("p");p.textContent=item.note;li.append(p)}
+      const href=safeLink(item.link);if(href){const a=document.createElement("a");a.href=href;a.textContent="Material öffnen →";a.target="_blank";a.rel="noopener noreferrer";li.append(a)}return li;
+    }
+    function renderWeek(){
+      const monday=mondayOfCurrentWeek(),friday=addDays(monday,4),today=dateKey(new Date());
+      document.getElementById("weekTitle").textContent=`Kalenderwoche ${isoWeek(monday)}`;
+      document.getElementById("weekRange").textContent=`${formatDate(monday,{day:"2-digit",month:"long"})} – ${formatDate(friday,{day:"2-digit",month:"long",year:"numeric"})}`;
+      document.getElementById("year").textContent=monday.getFullYear();daysContainer.replaceChildren();
+      dayNames.forEach((name,i)=>{const date=addDays(monday,i),key=dateKey(date),card=document.createElement("article");card.className=`day${key===today?" today":""}`;
+        const head=document.createElement("div");head.className="day-head";const dn=document.createElement("div");dn.className="day-name";dn.textContent=name;const dd=document.createElement("div");dd.className="day-date";dd.textContent=formatDate(date,{day:"2-digit",month:"2-digit",year:"numeric"});head.append(dn,dd);if(key===today){const now=document.createElement("span");now.className="today-label";now.textContent="Heute";head.append(now)}
+        const list=document.createElement("ul");list.className="materials";const entries=materials[key]||[];if(entries.length)entries.forEach((item,n)=>list.append(renderMaterial(item,key,n)));else{const empty=document.createElement("li");empty.className="empty";empty.textContent="Noch keine Materialien eingetragen.";list.append(empty)}
+        const add=document.createElement("button");add.type="button";add.className="add";add.textContent="+ Material hinzufügen";add.onclick=()=>openDialog(date);card.append(head,list,add);daysContainer.append(card)});
+    }
+    function openDialog(date){form.reset();document.getElementById("materialDate").value=dateKey(date);document.getElementById("dialogDate").textContent=`${dayNames[date.getDay()-1]}, ${formatDate(date,{day:"2-digit",month:"long",year:"numeric"})}`;document.getElementById("materialMessage").textContent="";dialog.showModal()}
+
+    form.onsubmit=async event=>{
+      event.preventDefault();const msg=document.getElementById("materialMessage"),submit=form.querySelector('[type="submit"]');
+      const key=document.getElementById("materialDate").value,file=document.getElementById("materialFile").files[0];let link=document.getElementById("materialLink").value.trim();
+      if(!file&&!safeLink(link)){msg.textContent="Bitte eine Datei oder einen gültigen Link angeben.";return}if(file&&file.size>20*1024*1024){msg.textContent="Die Datei darf maximal 20 MB groß sein.";return}
+      submit.disabled=true;msg.textContent="Wird in GitHub gespeichert …";
+      try{
+        if(file){const path=`materialien/${key}/${Date.now()}-${cleanName(file.name)}`;await githubPut(path,await fileToBase64(file),`Datei hochladen: ${file.name}`);link=`https://${GH_OWNER}.github.io/${GH_REPO}/${path.split("/").map(encodeURIComponent).join("/")}`}
+        const entry={title:document.getElementById("materialTitle").value.trim(),kind:document.getElementById("materialKind").value,link,note:document.getElementById("materialNote").value.trim()};
+        if(!materials[key])materials[key]=[];materials[key].push(entry);await saveCatalog(`Material hinzufügen: ${entry.title}`);dialog.close();renderWeek();setSync("Gespeichert");
+      }catch(e){msg.textContent=e.message;await loadMaterials().catch(()=>{})}finally{submit.disabled=false}
+    };
+    document.getElementById("cancelButton").onclick=()=>dialog.close();
+    document.getElementById("editToggle").onclick=event=>{if(!token){loginDialog.showModal();return}const active=document.body.classList.toggle("editing");event.currentTarget.setAttribute("aria-pressed",String(active));event.currentTarget.textContent=active?"✓ Bearbeitung beenden":"✏️ Bearbeiten"};
+    document.getElementById("loginCancel").onclick=()=>loginDialog.close();
+    document.getElementById("loginForm").onsubmit=async event=>{event.preventDefault();const msg=document.getElementById("loginMessage");token=document.getElementById("githubToken").value.trim();msg.textContent="Verbindung wird geprüft …";try{const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`,{headers:headers()});if(!r.ok)throw new Error("Token ungültig oder ohne Zugriff auf dieses Repository.");sessionStorage.setItem("wochenmaterialien_github_token",token);await loadMaterials();loginDialog.close();document.body.classList.add("editing");document.getElementById("editToggle").textContent="✓ Bearbeitung beenden";setSync("Mit GitHub verbunden")}catch(e){token="";msg.textContent=e.message}};
+    document.getElementById("reloadButton").onclick=async()=>{try{setSync("Wird geladen …");await loadMaterials();setSync("Aktuell")}catch(e){setSync(e.message,true)}};
+    document.getElementById("logoutButton").onclick=()=>{token="";sessionStorage.removeItem("wochenmaterialien_github_token");document.body.classList.remove("editing");document.getElementById("editToggle").textContent="✏️ Bearbeiten"};
+    renderWeek();loadMaterials().catch(e=>setSync(e.message,true));
+  </script>
+</body>
+</html>
