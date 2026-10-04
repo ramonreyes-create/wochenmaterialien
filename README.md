@@ -13,3 +13,6 @@ Página semanal de materiales para la 11. Klasse.
 Los registros se consultan desde **Firebase Console → Firestore Database → `activityLogs`**.
 
 Sitio: https://ramonreyes-create.github.io/wochenmaterialien/
+
+- Página de alumnas: https://ramonreyes-create.github.io/wochenmaterialien/
+- Página del profesor: https://ramonreyes-create.github.io/wochenmaterialien/profesor.html
