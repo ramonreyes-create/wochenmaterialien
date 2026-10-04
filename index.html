@@ -40,8 +40,16 @@
     .material h3 { font-size:1rem; line-height:1.3; overflow-wrap:anywhere; }
     .kind { display:inline-block; margin:8px 0 6px; padding:4px 8px; background:#dbeafe; color:#1e40af; border-radius:999px; font-size:.72rem; font-weight:800; }
     .material p { color:#475569; font-size:.88rem; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere; }
-    .material a { display:inline-block; margin-top:9px; color:var(--blue-dark); font-weight:750; font-size:.88rem; text-decoration:none; }
+    .material a { display:inline-block; color:var(--blue-dark); font-weight:750; font-size:.88rem; text-decoration:none; }
     .material a:hover { text-decoration:underline; }
+    .track-actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-top:10px; }
+    .complete { border:0; border-radius:9px; padding:8px 10px; background:#dcfce7; color:#166534; font-size:.82rem; font-weight:800; }
+    .studentbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:-10px 0 24px; padding:14px 18px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:14px; }
+    .studentbar p { color:#334155; line-height:1.45; }
+    .studentbar strong { color:var(--blue-dark); }
+    .student-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:9px; }
+    .firebase-status { color:#475569; font-size:.82rem; }
+    .firebase-status.ready { color:#166534; }
     .empty { padding:24px 18px; color:var(--muted); text-align:center; line-height:1.5; }
     .delete { display:none; border:0; background:#fee2e2; color:#b91c1c; border-radius:8px; padding:5px 8px; font-weight:800; }
     body.editing .delete { display:inline-block; }
@@ -55,7 +63,7 @@
     .sync-status.error,.form-message { color:#b91c1c; }
     .form-message { min-height:20px; font-size:.9rem; font-weight:700; }
     .admin-actions { display:flex; flex-wrap:wrap; gap:10px; }
-    .secondary { border:1px solid #cbd5e1; background:#f8fafc; color:#334155; border-radius:10px; padding:9px 13px; font-weight:750; }
+    .secondary { border:1px solid #cbd5e1; background:#f8fafc; color:#334155; border-radius:10px; padding:9px 13px; font-weight:750; text-decoration:none; }
     .danger { color:#b91c1c; border-color:#fecaca; background:#fff1f2; }
     dialog { width:min(560px,calc(100% - 30px)); border:0; border-radius:18px; padding:0; box-shadow:0 24px 70px rgba(15,23,42,.35); }
     dialog::backdrop { background:rgba(15,23,42,.55); }
@@ -74,6 +82,8 @@
     @media (max-width:1050px) { .days { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media (max-width:650px) {
       .weekbar { align-items:flex-start; flex-direction:column; }
+      .studentbar { align-items:flex-start; flex-direction:column; }
+      .student-actions { justify-content:flex-start; }
       .days { grid-template-columns:1fr; }
       .day { min-height:0; }
     }
@@ -108,6 +118,14 @@
       Materialien können als Link zu einer Datei, einer Übung, einem Video oder einer Webseite eingetragen werden.
     </section>
 
+    <section class="studentbar" aria-label="Aktivitätsprotokoll">
+      <p><strong>Dein Lernfortschritt:</strong> Verwende den Code, den du von deiner Lehrkraft erhalten hast. Öffnen und Abschließen von Aktivitäten werden sicher gespeichert.</p>
+      <div class="student-actions">
+        <span class="firebase-status" id="firebaseStatus">Verbindung wird hergestellt …</span>
+        <button class="secondary" id="studentButton" type="button">Schülerinnen-Code</button>
+      </div>
+    </section>
+
     <section class="days" id="days" aria-label="Unterrichtswoche"></section>
 
     <section class="admin" aria-labelledby="adminTitle">
@@ -115,6 +133,7 @@
       <p>Die Materialien werden direkt im GitHub-Repository gespeichert. Der persönliche GitHub-Schlüssel bleibt nur für diese Browsersitzung im Speicher.</p>
       <p class="sync-status" id="syncStatus">Mit GitHub verbunden</p>
       <div class="admin-actions">
+        <a class="secondary" href="https://console.firebase.google.com/project/deutschkurs-6e949/firestore/databases/-default-/data/~2FactivityLogs" target="_blank" rel="noopener noreferrer">Aktivitäten ansehen</a>
         <button class="secondary" id="reloadButton" type="button">Neu laden</button>
         <button class="secondary danger" id="logoutButton" type="button">Abmelden</button>
       </div>
@@ -147,6 +166,23 @@
       <div class="form-actions">
         <button class="cancel" id="cancelButton" type="button">Abbrechen</button>
         <button class="save" type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="activityDialog">
+    <div class="dialog-head"><h2>Aktivität abschließen</h2><p id="activityTitle"></p></div>
+    <form id="activityForm">
+      <label>Dein Schülerinnen-Code
+        <input id="studentCode" required minlength="2" maxlength="30" autocomplete="nickname" placeholder="z. B. SU-17">
+      </label>
+      <label>Antwort oder Kommentar (optional)
+        <textarea id="studentAnswer" maxlength="1000" placeholder="Was hast du gemacht oder gelernt?"></textarea>
+      </label>
+      <div class="form-message" id="activityMessage"></div>
+      <div class="form-actions">
+        <button class="cancel" id="activityCancel" type="button">Abbrechen</button>
+        <button class="save" type="submit">Als erledigt speichern</button>
       </div>
     </form>
   </dialog>
@@ -452,7 +488,9 @@
       top.append(title,remove);li.append(top);
       const kind=document.createElement("span");kind.className="kind";kind.textContent=item.kind;li.append(kind);
       if(item.note){const p=document.createElement("p");p.textContent=item.note;li.append(p)}
-      const href=safeLink(item.link);if(href){const a=document.createElement("a");a.href=href;a.textContent="Material öffnen →";a.target="_blank";a.rel="noopener noreferrer";li.append(a)}return li;
+      const activityId=`${key}-${index}`,actions=document.createElement("div");actions.className="track-actions";
+      const href=safeLink(item.link);if(href){const a=document.createElement("a");a.href=href;a.textContent="Material öffnen →";a.target="_blank";a.rel="noopener noreferrer";a.dataset.trackAction="opened";a.dataset.activityId=activityId;a.dataset.activityTitle=item.title;actions.append(a)}
+      const done=document.createElement("button");done.type="button";done.className="complete";done.textContent="✓ Erledigt melden";done.dataset.activityId=activityId;done.dataset.activityTitle=item.title;actions.append(done);li.append(actions);return li;
     }
     function renderWeek(){
       const monday=mondayOfCurrentWeek(),friday=addDays(monday,4),today=dateKey(new Date());
@@ -484,6 +522,62 @@
     document.getElementById("reloadButton").onclick=async()=>{try{setSync("Wird geladen …");await loadMaterials();setSync("Aktuell")}catch(e){setSync(e.message,true)}};
     document.getElementById("logoutButton").onclick=()=>{token="";sessionStorage.removeItem("wochenmaterialien_github_token");document.body.classList.remove("editing");document.getElementById("editToggle").textContent="✏️ Bearbeiten"};
     renderWeek();loadMaterials().catch(e=>setSync(e.message,true));
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+    const firebaseConfig={
+      apiKey:"AIzaSyCGCwZGiMxkd3QLByu34u_tFOK31-1_C0k",
+      authDomain:"deutschkurs-6e949.firebaseapp.com",
+      projectId:"deutschkurs-6e949",
+      storageBucket:"deutschkurs-6e949.firebasestorage.app",
+      messagingSenderId:"974944780108",
+      appId:"1:974944780108:web:9df90bda17e9c71c2619e9",
+      measurementId:"G-SBE7W6R911"
+    };
+    const STUDENT_KEY="wochenmaterialien_student_code";
+    const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+    const status=document.getElementById("firebaseStatus"),activityDialog=document.getElementById("activityDialog"),activityForm=document.getElementById("activityForm");
+    let pendingActivity=null;
+    const authReady=signInAnonymously(auth).then(()=>{status.textContent="Aktivitätsprotokoll bereit";status.classList.add("ready")}).catch(()=>{status.textContent="Protokoll derzeit nicht erreichbar"});
+
+    function cleanCode(value){return String(value||"").trim().toUpperCase().replace(/[^A-ZÄÖÜ0-9_-]/g,"").slice(0,30)}
+    function savedCode(){return cleanCode(localStorage.getItem(STUDENT_KEY))}
+    function requestCode(){
+      const entered=window.prompt("Gib deinen Schülerinnen-Code ein:",savedCode());
+      if(entered===null)return "";
+      const code=cleanCode(entered);
+      if(code.length<2){alert("Der Code muss mindestens zwei Zeichen enthalten.");return ""}
+      localStorage.setItem(STUDENT_KEY,code);return code;
+    }
+    async function recordActivity(activity,action,answer=""){
+      const code=savedCode();if(!code)throw new Error("Bitte zuerst deinen Schülerinnen-Code eingeben.");
+      await authReady;if(!auth.currentUser)throw new Error("Keine Verbindung zum Aktivitätsprotokoll.");
+      await addDoc(collection(db,"activityLogs"),{
+        studentCode:code,userId:auth.currentUser.uid,activityId:activity.id,
+        activityTitle:String(activity.title||"").slice(0,140),action,
+        answer:String(answer||"").trim().slice(0,1000),week:document.getElementById("weekTitle").textContent,
+        createdAt:serverTimestamp()
+      });
+    }
+
+    document.getElementById("studentButton").addEventListener("click",()=>{const code=requestCode();if(code)status.textContent=`Code ${code} gespeichert`});
+    document.getElementById("activityCancel").addEventListener("click",()=>activityDialog.close());
+    document.addEventListener("click",event=>{
+      const done=event.target.closest(".complete");
+      if(done){pendingActivity={id:done.dataset.activityId,title:done.dataset.activityTitle};document.getElementById("activityTitle").textContent=pendingActivity.title;document.getElementById("studentCode").value=savedCode();document.getElementById("studentAnswer").value="";document.getElementById("activityMessage").textContent="";activityDialog.showModal();return}
+      const link=event.target.closest('a[data-track-action="opened"]');
+      if(link){if(!savedCode())requestCode();if(savedCode())recordActivity({id:link.dataset.activityId,title:link.dataset.activityTitle},"opened").catch(()=>{status.textContent="Öffnen konnte nicht protokolliert werden"})}
+    });
+    activityForm.addEventListener("submit",async event=>{
+      event.preventDefault();const message=document.getElementById("activityMessage"),submit=activityForm.querySelector('[type="submit"]');
+      const code=cleanCode(document.getElementById("studentCode").value);if(code.length<2){message.textContent="Bitte einen gültigen Code eingeben.";return}
+      localStorage.setItem(STUDENT_KEY,code);submit.disabled=true;message.textContent="Wird gespeichert …";
+      try{await recordActivity(pendingActivity,"completed",document.getElementById("studentAnswer").value);activityDialog.close();status.textContent=`Erledigt für ${code} gespeichert`;status.classList.add("ready")}
+      catch(error){message.textContent=error.message||"Die Aktivität konnte nicht gespeichert werden."}finally{submit.disabled=false}
+    });
   </script>
 </body>
 </html>
