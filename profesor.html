@@ -22,6 +22,10 @@
     .weekbar { display:flex; justify-content:space-between; align-items:center; gap:18px; background:#fff7ed; border-left:7px solid var(--orange); border-radius:16px; padding:20px 22px; margin-bottom:24px; box-shadow:var(--shadow); }
     .weekbar h2 { color:#9a3412; margin-bottom:4px; }
     .weekbar p { color:#7c2d12; }
+    .week-actions,.teacher-week-nav { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .teacher-week-nav { display:none; }
+    body[data-mode="teacher"] .teacher-week-nav { display:flex; }
+    .week-nav { border:1px solid #fdba74; border-radius:999px; padding:9px 12px; background:#fff7ed; color:#9a3412; font-weight:800; }
     .edit-toggle { display:none; border:0; border-radius:999px; padding:11px 16px; background:#fff; color:#9a3412; font-weight:800; box-shadow:0 3px 10px #7c2d1222; white-space:nowrap; }
     body[data-mode="teacher"] .edit-toggle { display:block; }
     .notice { background:#fff; border-radius:16px; padding:18px 22px; margin-bottom:24px; box-shadow:0 6px 18px rgba(15,23,42,.08); line-height:1.55; }
@@ -113,7 +117,14 @@
         <h2 id="weekTitle">Aktuelle Woche</h2>
         <p id="weekRange"></p>
       </div>
-      <button class="edit-toggle" id="editToggle" type="button" aria-pressed="false">✏️ Bearbeiten</button>
+      <div class="week-actions">
+        <div class="teacher-week-nav" aria-label="Wochenauswahl">
+          <button class="week-nav" id="previousWeek" type="button">← Vorherige Woche</button>
+          <button class="week-nav" id="currentWeek" type="button">Aktuelle Woche</button>
+          <button class="week-nav" id="nextWeek" type="button">Nächste Woche →</button>
+        </div>
+        <button class="edit-toggle" id="editToggle" type="button" aria-pressed="false">✏️ Bearbeiten</button>
+      </div>
     </section>
 
     <section class="notice">
@@ -455,7 +466,7 @@
     const dayNames=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"];
     const daysContainer=document.getElementById("days"), dialog=document.getElementById("materialDialog");
     const loginDialog=document.getElementById("loginDialog"), form=document.getElementById("materialForm");
-    let materials={}, dataSha="", token=sessionStorage.getItem("wochenmaterialien_github_token")||"";
+    let materials={}, dataSha="", token=sessionStorage.getItem("wochenmaterialien_github_token")||"", selectedMonday=mondayOfCurrentWeek();
 
     function atNoon(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12)}
     function addDays(d,n){const x=atNoon(d);x.setDate(x.getDate()+n);return x}
@@ -502,7 +513,7 @@
       const done=document.createElement("button");done.type="button";done.className="complete";done.textContent="✓ Erledigt melden";done.dataset.activityId=activityId;done.dataset.activityTitle=item.title;actions.append(done);li.append(actions);return li;
     }
     function renderWeek(){
-      const monday=mondayOfCurrentWeek(),friday=addDays(monday,4),today=dateKey(new Date());
+      const monday=selectedMonday,friday=addDays(monday,4),today=dateKey(new Date());
       document.getElementById("weekTitle").textContent=`Kalenderwoche ${isoWeek(monday)}`;
       document.getElementById("weekRange").textContent=`${formatDate(monday,{day:"2-digit",month:"long"})} – ${formatDate(friday,{day:"2-digit",month:"long",year:"numeric"})}`;
       document.getElementById("year").textContent=monday.getFullYear();daysContainer.replaceChildren();
@@ -530,6 +541,9 @@
     document.getElementById("loginForm").onsubmit=async event=>{event.preventDefault();const msg=document.getElementById("loginMessage");token=document.getElementById("githubToken").value.trim();msg.textContent="Verbindung wird geprüft …";try{const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`,{headers:headers()});if(!r.ok)throw new Error("Token ungültig oder ohne Zugriff auf dieses Repository.");sessionStorage.setItem("wochenmaterialien_github_token",token);await loadMaterials();loginDialog.close();document.body.classList.add("editing");document.getElementById("editToggle").textContent="✓ Bearbeitung beenden";setSync("Mit GitHub verbunden")}catch(e){token="";msg.textContent=e.message}};
     document.getElementById("reloadButton").onclick=async()=>{try{setSync("Wird geladen …");await loadMaterials();setSync("Aktuell")}catch(e){setSync(e.message,true)}};
     document.getElementById("logoutButton").onclick=()=>{token="";sessionStorage.removeItem("wochenmaterialien_github_token");document.body.classList.remove("editing");document.getElementById("editToggle").textContent="✏️ Bearbeiten"};
+    document.getElementById("previousWeek").onclick=()=>{selectedMonday=addDays(selectedMonday,-7);renderWeek()};
+    document.getElementById("currentWeek").onclick=()=>{selectedMonday=mondayOfCurrentWeek();renderWeek()};
+    document.getElementById("nextWeek").onclick=()=>{selectedMonday=addDays(selectedMonday,7);renderWeek()};
     renderWeek();loadMaterials().catch(e=>setSync(e.message,true));
   </script>
   <script type="module">
